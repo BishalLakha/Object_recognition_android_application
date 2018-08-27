@@ -1,27 +1,18 @@
 package com.newrun.bishal.myintelligentapplication;
 
+import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
-
-import com.newrun.myintelligentapplication.R;
 
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
-import java.io.InputStream;
-
-public class MainActivity extends AppCompatActivity {
+public class Recognizer {
 
     static {
         System.loadLibrary("tensorflow_inference");
     }
+
+    private Context context;
 
     //PATH TO OUR MODEL FILE AND NAMES OF THE INPUT AND OUTPUT NODES
     private String MODEL_PATH = "file:///android_asset/squeezenet.pb";
@@ -34,37 +25,37 @@ public class MainActivity extends AppCompatActivity {
     private float[] floatValues;
     private int[] INPUT_SIZE = {224, 224, 3};
 
-    ImageView imageView;
-    TextView resultView;
-    Snackbar progressBar;
+    public Recognizer(Context context) {
+        this.context = context;
+
+        initRecognizer();
+    }
+
+    private void initRecognizer() {
+        //initialize tensorflow with the AssetManager and the Model
+        tf = new TensorFlowInferenceInterface(context.getAssets(), MODEL_PATH);
+    }
 
     public Object[] argmax(float[] array) {
-
-
         int best = -1;
         float best_confidence = 0.0f;
 
         for (int i = 0; i < array.length; i++) {
-
             float value = array[i];
-
             if (value > best_confidence) {
-
                 best_confidence = value;
                 best = i;
             }
         }
-
         return new Object[]{best, best_confidence};
     }
 
-    public void predict(final Bitmap bitmap) {
+    public void predict(final Bitmap bitmap, final OnPredictedCallback predictionCallback) {
 
         //Runs inference in background thread
         new AsyncTask<Integer, Integer, Integer>() {
 
             @Override
-
             protected Integer doInBackground(Integer... params) {
 
                 //Resize the image into 224 x 224
@@ -72,94 +63,38 @@ public class MainActivity extends AppCompatActivity {
 
                 //Normalize the pixels
                 floatValues = ImageUtils.normalizeBitmap(resized_image, 224, 127.5f, 1.0f);
-
                 //Pass input into the tensorflow
                 tf.feed(INPUT_NAME, floatValues, 1, 224, 224, 3);
-
                 //compute predictions
                 tf.run(new String[]{OUTPUT_NAME});
-
                 //copy the output into the PREDICTIONS array
                 tf.fetch(OUTPUT_NAME, PREDICTIONS);
-
                 //Obtained highest prediction
                 Object[] results = argmax(PREDICTIONS);
-
 
                 int class_index = (Integer) results[0];
                 float confidence = (Float) results[1];
 
-
                 try {
 
                     final String conf = String.valueOf(confidence * 100).substring(0, 5);
-
                     //Convert predicted class index into actual label name
-                    final String label = ImageUtils.getLabel(getAssets().open("labels.json"), class_index);
+                    final String label = ImageUtils.getLabel(context.getAssets().open("labels.json"), class_index);
 
-
-                    //Display result on UI
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            progressBar.dismiss();
-                            resultView.setText(label + " : " + conf + "%");
-
-                        }
-                    });
+                    // TODO: 8/27/2018 Callback to main
+                    predictionCallback.onPredictionComplete(conf, label);
 
                 } catch (Exception e) {
 
-
                 }
-
 
                 return 0;
             }
 
-
         }.execute(0);
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        //initialize tensorflow with the AssetManager and the Model
-        tf = new TensorFlowInferenceInterface(getAssets(), MODEL_PATH);
-
-        imageView = (ImageView) findViewById(R.id.imageview);
-        resultView = (TextView) findViewById(R.id.results);
-
-        progressBar = Snackbar.make(imageView, "PROCESSING IMAGE", Snackbar.LENGTH_INDEFINITE);
-
-
-        final Button predict = (Button) findViewById(R.id.predict);
-        predict.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-
-                try {
-
-                    //READ THE IMAGE FROM ASSETS FOLDER
-                    InputStream imageStream = getAssets().open("testimage.jpeg");
-
-                    Bitmap bitmap = BitmapFactory.decodeStream(imageStream);
-
-                    imageView.setImageBitmap(bitmap);
-
-                    progressBar.show();
-
-                    predict(bitmap);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-            }
-        });
+    public interface OnPredictedCallback {
+        void onPredictionComplete(String confidence, String label);
     }
-
 }

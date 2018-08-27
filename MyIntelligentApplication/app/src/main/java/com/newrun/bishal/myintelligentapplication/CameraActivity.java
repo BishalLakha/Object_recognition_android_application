@@ -2,13 +2,17 @@ package com.newrun.bishal.myintelligentapplication;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.newrun.myintelligentapplication.R;
@@ -21,11 +25,17 @@ public class CameraActivity extends AppCompatActivity {
 
     @BindView(R.id.layoutCameraView)
     RelativeLayout layoutCameraView;
+    @BindView(R.id.ivCapturedImage)
+    ImageView ivCapturedImage;
+    @BindView(R.id.tvResult)
+    TextView tvResult;
 
     private Camera mCamera;
     private CameraView mCameraView;
 
     private int cameraId = CameraInfo.CAMERA_FACING_FRONT;
+
+    private Recognizer recognizer = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,9 +50,9 @@ public class CameraActivity extends AppCompatActivity {
             }, 0);
         }
 
+        recognizer = new Recognizer(CameraActivity.this);
+
         switchAndStartCamera();
-
-
     }
 
     @Override
@@ -103,6 +113,44 @@ public class CameraActivity extends AppCompatActivity {
         return cameraId;
     }
 
+    private void captureAndPredict() {
+        mCamera.takePicture(null, null, new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] bytes, Camera camera) {
+                Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                Bitmap rotatedBitmap = null;
+                if (cameraId == CameraInfo.CAMERA_FACING_FRONT) {
+                    rotatedBitmap = ImageUtils.rotateBitmap(bmp, -90);
+                } else {
+                    rotatedBitmap = ImageUtils.rotateBitmap(bmp, 90);
+                }
+
+                if (rotatedBitmap != null) {
+                    ivCapturedImage.setImageBitmap(rotatedBitmap);
+
+                    //Predict
+                    try {
+                        recognizer.predict(rotatedBitmap, new Recognizer.OnPredictedCallback() {
+                            @Override
+                            public void onPredictionComplete(final String confidence, final String label) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        tvResult.setText(label + " : " + confidence + "%");
+                                    }
+                                });
+                            }
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                camera.startPreview();
+            }
+        });
+    }
+
     @Override
     protected void onPause() {
         if (mCamera != null) {
@@ -114,7 +162,7 @@ public class CameraActivity extends AppCompatActivity {
 
     @OnClick(R.id.btnCaptureAndPredict)
     public void onBtnCaptureAndPredictClicked() {
-
+        captureAndPredict();
     }
 
     @OnClick(R.id.btnSwitchCamera)
