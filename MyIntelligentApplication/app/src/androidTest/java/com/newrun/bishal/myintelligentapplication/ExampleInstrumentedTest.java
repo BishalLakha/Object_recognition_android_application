@@ -1,4 +1,4 @@
-package com.example.bishal.myintelligentapplication;
+package com.newrun.bishal.myintelligentapplication;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

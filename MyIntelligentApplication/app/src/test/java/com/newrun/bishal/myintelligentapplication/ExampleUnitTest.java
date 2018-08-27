@@ -1,4 +1,4 @@
-package com.example.bishal.myintelligentapplication;
+package com.newrun.bishal.myintelligentapplication;
 
 import org.junit.Test;
 
