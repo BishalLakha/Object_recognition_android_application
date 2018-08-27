@@ -118,8 +118,14 @@ public class CameraActivity extends AppCompatActivity {
         mCamera.takePicture(null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] bytes, Camera camera) {
+
+                camera.startPreview();
+
                 Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                 Bitmap rotatedBitmap = null;
+                if (bmp == null) {
+                    return;
+                }
                 if (cameraId == CameraInfo.CAMERA_FACING_FRONT) {
                     rotatedBitmap = ImageUtils.rotateBitmap(bmp, -90);
                 } else {
@@ -146,8 +152,6 @@ public class CameraActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
-
-                camera.startPreview();
             }
         });
     }
