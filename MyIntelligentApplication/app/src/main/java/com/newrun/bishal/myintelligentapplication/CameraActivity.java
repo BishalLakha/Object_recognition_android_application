@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -24,7 +25,7 @@ import butterknife.OnClick;
 public class CameraActivity extends AppCompatActivity {
 
     @BindView(R.id.layoutCameraView)
-    RelativeLayout layoutCameraView;
+    FrameLayout layoutCameraView;
     @BindView(R.id.ivCapturedImage)
     ImageView ivCapturedImage;
     @BindView(R.id.tvResult)
